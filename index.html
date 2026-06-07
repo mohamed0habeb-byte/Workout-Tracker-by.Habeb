@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Workout Log" />
+  <meta name="application-name" content="Workout Log" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="description" content="Personal workout tracker by Mohamed Habeb" />
+  <title>Workout Log</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #0a0a0f; }
+    body { font-family: 'DM Mono', 'Courier New', monospace; color: #e8e6e0; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+    #root { max-width: 480px; margin: 0 auto; min-height: 100vh; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a0f; }
+    ::-webkit-scrollbar-thumb { background: #2a2a35; border-radius: 2px; }
+    input { font-family: 'DM Mono', 'Courier New', monospace; }
+    input:focus { outline: none; }
+    button { font-family: 'DM Mono', 'Courier New', monospace; cursor: pointer; }
+    .day-cell:active { transform: scale(0.93) !important; }
+    .icon-btn:active { opacity: 0.6; }
+
+    /* VIEWS */
+    #calendar { padding-bottom: 40px; }
+    #type-picker { display: none; }
+    #workout-view { display: none; padding-bottom: 60px; }
+    #template-view { display: none; padding-bottom: 60px; }
+
+    /* CALENDAR */
+    .cal-header { padding: 40px 24px 20px; border-bottom: 1px solid #1e1e28; }
+    .cal-label { font-size: 11px; letter-spacing: 4px; color: #ff6b35; margin-bottom: 8px; text-transform: uppercase; }
+    .cal-month-row { display: flex; align-items: center; justify-content: space-between; }
+    .cal-month-name { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 3px; color: #e8e6e0; }
+    .nav-btn { background: none; border: none; color: #666; font-size: 20px; padding: 4px 8px; }
+    .legend { display: flex; gap: 14px; margin-top: 16px; font-size: 10px; letter-spacing: 2px; color: #555; flex-wrap: wrap; }
+    .day-headers { display: grid; grid-template-columns: repeat(7, 1fr); padding: 12px 16px 4px; }
+    .day-hdr { text-align: center; font-size: 9px; letter-spacing: 2px; color: #444; padding: 4px 0; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 4px 16px; }
+    .day-cell {
+      aspect-ratio: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      border-radius: 10px; background: #111118;
+      border: 1.5px solid #1a1a22; cursor: pointer;
+      transition: transform 0.12s ease;
+    }
+    .day-num { font-size: 13px; font-weight: 500; line-height: 1; color: #ccc; }
+    .day-dot { width: 5px; height: 5px; border-radius: 50%; margin-top: 4px; background: transparent; }
+    .day-type-lbl { font-size: 7px; letter-spacing: 0.5px; margin-top: 2px; }
+
+    /* TYPE PICKER */
+    .picker-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: flex; align-items: flex-end; justify-content: center;
+      z-index: 100; padding: 0;
+    }
+    .picker-sheet {
+      background: #13131a; border-radius: 20px 20px 0 0;
+      width: 100%; max-width: 480px; padding: 24px 20px 40px;
+    }
+    .picker-title { font-size: 10px; letter-spacing: 3px; color: #555; margin-bottom: 20px; text-align: center; }
+    .picker-options { display: flex; flex-direction: column; gap: 10px; }
+    .picker-option {
+      padding: 16px 20px; border-radius: 12px;
+      border: 1.5px solid #1e1e28; background: #0d0d14;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .picker-option:active { transform: scale(0.97); }
+    .picker-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .picker-name { font-size: 13px; letter-spacing: 1px; color: #ccc; }
+    .picker-cancel {
+      margin-top: 14px; width: 100%; padding: 14px;
+      background: none; border: 1px solid #2a2a35;
+      border-radius: 10px; color: #444; font-size: 10px; letter-spacing: 3px;
+    }
+
+    /* WORKOUT VIEW */
+    .wv-header { padding: 32px 20px 16px; border-bottom: 1px solid #1e1e28; position: sticky; top: 0; background: #0a0a0f; z-index: 10; }
+    .wv-header-row { display: flex; align-items: center; gap: 12px; }
+    .back-btn { background: none; border: none; color: #666; font-size: 22px; padding: 0; line-height: 1; }
+    .wv-title { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 2px; line-height: 1; }
+    .wv-date { font-size: 10px; letter-spacing: 3px; color: #555; margin-top: 2px; }
+    .wv-btns { margin-left: auto; display: flex; gap: 8px; }
+    .reset-btn { background: none; border: 1px solid #2a2a35; color: #555; font-size: 9px; letter-spacing: 2px; padding: 5px 10px; border-radius: 6px; }
+    .edit-btn { background: none; border: 1px solid #2a2a35; color: #555; font-size: 9px; letter-spacing: 2px; padding: 5px 10px; border-radius: 6px; }
+    .table-header { display: grid; grid-template-columns: 1fr 48px 48px 68px 32px; gap: 6px; padding: 12px 16px 6px; border-bottom: 1px solid #1a1a22; }
+    .th { font-size: 8px; letter-spacing: 2px; color: #444; text-align: center; }
+    .th:first-child { text-align: left; }
+    .ex-row { display: grid; grid-template-columns: 1fr 48px 48px 68px 32px; gap: 6px; padding: 10px 16px; border-bottom: 1px solid #12121a; align-items: center; }
+    .ex-row:nth-child(odd) { background: #0d0d14; }
+    .ex-row:nth-child(even) { background: #0a0a0f; }
+    .input-name { background: none; border: none; color: #ccc; font-size: 12px; width: 100%; }
+    .input-num { background: #111118; border: 1px solid #1e1e28; border-radius: 6px; color: #e8e6e0; font-size: 13px; text-align: center; padding: 6px 4px; width: 100%; }
+    .input-weight { background: #111118; border: 1px solid #1e1e28; border-radius: 6px; font-size: 13px; font-weight: 500; text-align: center; padding: 6px 4px; width: 100%; }
+    .del-btn { background: none; border: none; color: #333; font-size: 16px; padding: 0; text-align: center; line-height: 1; }
+    .add-btn { width: 100%; background: none; border: 1px dashed #2a2a35; border-radius: 10px; color: #444; font-size: 10px; letter-spacing: 3px; padding: 14px; }
+    .add-btn-wrap { padding: 16px; }
+    #summary { margin: 0 16px; padding: 16px; background: #111118; border-radius: 12px; border: 1px solid #1e1e28; display: none; }
+    .summary-label { font-size: 9px; letter-spacing: 3px; color: #444; margin-bottom: 10px; }
+    .summary-row { display: flex; gap: 24px; }
+    .summary-num { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; }
+    .summary-sub { font-size: 9px; letter-spacing: 2px; color: #444; }
+
+    /* TEMPLATE VIEW */
+    .tv-notice { margin: 12px 16px 0; padding: 10px 14px; background: #111118; border-radius: 8px; border: 1px solid #2a2a35; font-size: 10px; letter-spacing: 1px; color: #555; line-height: 1.6; }
+    .tmpl-header { display: grid; grid-template-columns: 1fr 48px 48px 32px; gap: 6px; padding: 12px 16px 6px; border-bottom: 1px solid #1a1a22; }
+    .tmpl-row { display: grid; grid-template-columns: 1fr 48px 48px 32px; gap: 6px; padding: 10px 16px; border-bottom: 1px solid #12121a; align-items: center; }
+    .tmpl-row:nth-child(odd) { background: #0d0d14; }
+    .tmpl-row:nth-child(even) { background: #0a0a0f; }
+  </style>
+</head>
+<body>
+<div id="root">
+
+  <!-- CALENDAR -->
+  <div id="calendar">
+    <div class="cal-header">
+      <div class="cal-label">Workout Log</div>
+      <div class="cal-month-row">
+        <button class="nav-btn icon-btn" onclick="prevMonth()">&#8249;</button>
+        <div class="cal-month-name" id="month-title"></div>
+        <button class="nav-btn icon-btn" onclick="nextMonth()">&#8250;</button>
+      </div>
+      <div class="legend">
+        <span><span style="color:#ff6b35">&#9679; </span>ANT</span>
+        <span><span style="color:#3b9eff">&#9679; </span>POST</span>
+        <span><span style="color:#3bdf8a">&#9679; </span>FULL</span>
+        <span><span style="color:#aa88ff">&#9679; </span>LOGGED</span>
+        <span><span style="color:#2a2a35">&#9679; </span>REST</span>
+      </div>
+    </div>
+    <div class="day-headers">
+      <div class="day-hdr">Sun</div><div class="day-hdr">Mon</div>
+      <div class="day-hdr">Tue</div><div class="day-hdr">Wed</div>
+      <div class="day-hdr">Thu</div><div class="day-hdr">Fri</div>
+      <div class="day-hdr">Sat</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <!-- TYPE PICKER OVERLAY -->
+  <div id="type-picker">
+    <div class="picker-overlay">
+      <div class="picker-sheet">
+        <div class="picker-title" id="picker-date-label"></div>
+        <div class="picker-options" id="picker-options"></div>
+        <button class="picker-cancel icon-btn" onclick="closePicker()">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKOUT VIEW -->
+  <div id="workout-view">
+    <div class="wv-header">
+      <div class="wv-header-row">
+        <button class="back-btn icon-btn" onclick="closeDay()">&#8592;</button>
+        <div>
+          <div class="wv-title" id="wv-title"></div>
+          <div class="wv-date" id="wv-date"></div>
+        </div>
+        <div class="wv-btns">
+          <button class="reset-btn icon-btn" onclick="resetDay()">RESET</button>
+          <button class="edit-btn icon-btn" onclick="openTemplate()">EDIT TPL</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-header">
+      <div class="th" style="text-align:left">EXERCISE</div>
+      <div class="th">SETS</div><div class="th">REPS</div>
+      <div class="th">WEIGHT</div><div class="th"></div>
+    </div>
+    <div id="exercises-list"></div>
+    <div class="add-btn-wrap">
+      <button class="add-btn icon-btn" onclick="addExercise()">+ ADD EXERCISE</button>
+    </div>
+    <div id="summary">
+      <div class="summary-label">SESSION SUMMARY</div>
+      <div class="summary-row">
+        <div>
+          <div class="summary-num" id="sum-logged" style="color:#e8e6e0"></div>
+          <div class="summary-sub">LOGGED</div>
+        </div>
+        <div>
+          <div class="summary-num" id="sum-vol"></div>
+          <div class="summary-sub">TOTAL VOL.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEMPLATE VIEW -->
+  <div id="template-view">
+    <div class="wv-header">
+      <div class="wv-header-row">
+        <button class="back-btn icon-btn" onclick="closeTemplate()">&#8592;</button>
+        <div>
+          <div class="wv-title" id="tv-title"></div>
+          <div class="wv-date">EDIT TEMPLATE</div>
+        </div>
+      </div>
+    </div>
+    <div class="tv-notice">التغييرات هتأثر على الأيام الجديدة بس — الأيام اللي فيها بيانات مش هتتأثر.</div>
+    <div class="tmpl-header">
+      <div class="th" style="text-align:left">EXERCISE</div>
+      <div class="th">SETS</div><div class="th">REPS</div><div class="th"></div>
+    </div>
+    <div id="template-list"></div>
+    <div class="add-btn-wrap">
+      <button class="add-btn icon-btn" onclick="addTemplateExercise()">+ ADD EXERCISE</button>
+    </div>
+  </div>
+
+</div>
+<script>
+const STORAGE_KEY = 'workout_tracker_v3';
+const TMPL_KEY    = 'workout_templates_v2';
+const DAY_TYPES   = ['Anterior 1','Anterior 2','Posterior 1','Posterior 2','Full Body','Rest'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+const TEMPLATES = {
+  'Anterior 1': [
+    {name:'Biceps Db Curl',sets:1,reps:12},
+    {name:'Preacher Curl',sets:1,reps:12},
+    {name:'Machine Chest Press',sets:2,reps:10},
+    {name:'Incline Machine Chest Press',sets:1,reps:10},
+    {name:'Cable Lateral Raises',sets:2,reps:15},
+    {name:'Leg Extensions',sets:2,reps:12},
+    {name:'Leg Press',sets:1,reps:12},
+    {name:'Leg Adduction',sets:2,reps:15},
+    {name:'Shoulder Press',sets:1,reps:10},
+    {name:'Ab Crunches',sets:2,reps:15},
+    {name:'Side Crunches',sets:1,reps:15},
+  ],
+  'Anterior 2': [
+    {name:'Db Biceps Curls',sets:2,reps:12},
+    {name:'Pec Flys Machine',sets:1,reps:12},
+    {name:'Incline Db Chest Press',sets:2,reps:10},
+    {name:'Cable Lateral Raises',sets:2,reps:15},
+    {name:'Leg Extensions',sets:2,reps:12},
+    {name:'Leg Adduction',sets:2,reps:15},
+    {name:'Cable Leg Abduction',sets:1,reps:15},
+    {name:'Shoulder Press',sets:1,reps:10},
+    {name:'Ab Crunches',sets:2,reps:15},
+    {name:'Side Crunches',sets:1,reps:15},
+  ],
+  'Posterior 1': [
+    {name:'Cable Pull Over',sets:2,reps:12},
+    {name:'Lat Pull Down Wide Grip',sets:1,reps:10},
+    {name:'Triceps Cable Push Down',sets:2,reps:12},
+    {name:'Kelso Shrugs',sets:2,reps:12},
+    {name:'Reverse Grip Cable Curl',sets:2,reps:12},
+    {name:'Back Extensions',sets:1,reps:15},
+    {name:'Rear Delt Cable Fly',sets:1,reps:15},
+    {name:'Cable Wrist Flexions',sets:1,reps:15},
+    {name:'Hip Thrust',sets:1,reps:12},
+    {name:'RDL',sets:1,reps:10},
+    {name:'Seated Leg Curls',sets:2,reps:12},
+    {name:'Calf Raises',sets:1,reps:15},
+  ],
+  'Posterior 2': [
+    {name:'Triceps Cable Push Down',sets:2,reps:12},
+    {name:'Kelso Shrugs',sets:1,reps:12},
+    {name:'Wide Grip Rows',sets:2,reps:10},
+    {name:'Cable Pull Over',sets:1,reps:12},
+    {name:'Lat Pull Down Wide Grip',sets:2,reps:10},
+    {name:'Seated Leg Curls',sets:2,reps:12},
+    {name:'RDL',sets:2,reps:10},
+    {name:'Calf Raises',sets:1,reps:15},
+    {name:'Reverse Grip Cable Curl',sets:2,reps:12},
+    {name:'Back Extensions',sets:1,reps:15},
+    {name:'Cable Wrist Flexions',sets:1,reps:15},
+  ],
+  'Full Body': [
+    {name:'Pec Flys',sets:2,reps:12},
+    {name:'Db Lateral Raises',sets:2,reps:15},
+    {name:'Db Protraction',sets:1,reps:12},
+    {name:'Leg Extensions',sets:2,reps:12},
+    {name:'Leg Adduction Machine',sets:1,reps:15},
+    {name:'Cable Leg Abduction',sets:1,reps:15},
+    {name:'Rear Delt Flys',sets:2,reps:15},
+    {name:'Db Shoulder Press',sets:2,reps:10},
+    {name:'Cable Ab Crunches',sets:2,reps:15},
+  ],
+};
+
+function getColor(type) {
+  if (!type || type==='Rest') return '#2a2a35';
+  if (type.startsWith('Anterior')) return '#ff6b35';
+  if (type.startsWith('Posterior')) return '#3b9eff';
+  if (type==='Full Body') return '#3bdf8a';
+  return '#2a2a35';
+}
+function getShortLabel(type) {
+  if (!type || type==='Rest') return '';
+  if (type==='Anterior 1') return 'AN1';
+  if (type==='Anterior 2') return 'AN2';
+  if (type==='Posterior 1') return 'PS1';
+  if (type==='Posterior 2') return 'PS2';
+  if (type==='Full Body') return 'FUL';
+  return '';
+}
+
+const today = new Date();
+let curMonth = today.getMonth();
+let curYear  = today.getFullYear();
+let selectedDay = null;
+let pickerDay   = null;
+let editingType = null;
+let allData = {};
+let savedTemplates = {};
+try { allData = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); } catch{}
+try { savedTemplates = JSON.parse(localStorage.getItem(TMPL_KEY)||'{}'); } catch{}
+
+function save()      { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(allData)); } catch{} }
+function saveTmpls() { try { localStorage.setItem(TMPL_KEY, JSON.stringify(savedTemplates)); } catch{} }
+function getDayKey(day) { return `${curYear}-${curMonth+1}-${day}`; }
+
+function getTemplate(type) {
+  return savedTemplates[type] ? savedTemplates[type] : (TEMPLATES[type]||[]);
+}
+
+// dayMeta: { type } — stores what type the user assigned to a day
+// allData: { key: { type, exercises[] } } — stores full workout with weights
+function getDayMeta(day) {
+  const key = getDayKey(day);
+  if (allData[key]) return allData[key].type || null;
+  // check meta store
+  const metaKey = 'meta_' + key;
+  return allData[metaKey] || null;
+}
+
+function setDayMeta(day, type) {
+  const metaKey = 'meta_' + getDayKey(day);
+  if (type === 'Rest') {
+    allData[metaKey] = 'Rest';
+  } else {
+    allData[metaKey] = type;
+  }
+  save();
+}
+
+function getDayWorkout(day) {
+  const key = getDayKey(day);
+  if (allData[key] && allData[key].exercises) return allData[key];
+  const type = getDayMeta(day);
+  if (!type || type==='Rest') return null;
+  return { type, exercises: getTemplate(type).map(e => ({...e, weight:''})) };
+}
+
+// ── CALENDAR ──
+function renderCalendar() {
+  document.getElementById('month-title').textContent = MONTH_NAMES[curMonth] + ' ' + curYear;
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  const firstDow    = new Date(curYear, curMonth, 1).getDay();
+  const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
+
+  for (let i=0; i<firstDow; i++) grid.appendChild(document.createElement('div'));
+
+  for (let d=1; d<=daysInMonth; d++) {
+    const type   = getDayMeta(d);
+    const color  = getColor(type);
+    const isToday = d===today.getDate() && curMonth===today.getMonth() && curYear===today.getFullYear();
+    const hasData = allData[getDayKey(d)] && allData[getDayKey(d)].exercises &&
+                    allData[getDayKey(d)].exercises.some(e=>e.weight!=='');
+
+    const cell = document.createElement('div');
+    cell.className = 'day-cell';
+    cell.style.background = isToday && type ? color+'22' : '#111118';
+    cell.style.border = isToday ? '1.5px solid '+(type?color:'#666') : '1.5px solid #1a1a22';
+
+    const numEl = document.createElement('div');
+    numEl.className = 'day-num';
+    numEl.textContent = d;
+    numEl.style.color = type && type!=='Rest' ? (isToday ? color : '#ccc') : (isToday?'#888':'#444');
+
+    const dot = document.createElement('div');
+    dot.className = 'day-dot';
+    dot.style.background = hasData ? '#aa88ff' : (type && type!=='Rest' ? color+'66' : 'transparent');
+
+    const lbl = document.createElement('div');
+    lbl.className = 'day-type-lbl';
+    lbl.textContent = getShortLabel(type);
+    lbl.style.color = color;
+    lbl.style.opacity = '0.8';
+
+    cell.appendChild(numEl);
+    cell.appendChild(dot);
+    cell.appendChild(lbl);
+    cell.addEventListener('click', () => openPicker(d));
+    grid.appendChild(cell);
+  }
+}
+
+function prevMonth() { if(curMonth===0){curMonth=11;curYear--;}else curMonth--; renderCalendar(); }
+function nextMonth() { if(curMonth===11){curMonth=0;curYear++;}else curMonth++; renderCalendar(); }
+
+// ── TYPE PICKER ──
+function openPicker(day) {
+  pickerDay = day;
+  const date = new Date(curYear, curMonth, day);
+  document.getElementById('picker-date-label').textContent =
+    date.toLocaleDateString('en-US',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
+
+  const opts = document.getElementById('picker-options');
+  opts.innerHTML = '';
+
+  DAY_TYPES.forEach(type => {
+    const color = getColor(type);
+    const opt = document.createElement('div');
+    opt.className = 'picker-option';
+
+    const dot = document.createElement('div');
+    dot.className = 'picker-dot';
+    dot.style.background = color;
+
+    const name = document.createElement('div');
+    name.className = 'picker-name';
+    name.textContent = type;
+
+    // mark current selection
+    const currentType = getDayMeta(day);
+    if (type === currentType) {
+      opt.style.borderColor = color;
+      opt.style.background = color+'15';
+    }
+
+    opt.appendChild(dot);
+    opt.appendChild(name);
+    opt.addEventListener('click', () => selectType(type));
+    opts.appendChild(opt);
+  });
+
+  document.getElementById('calendar').style.display = 'none';
+  document.getElementById('type-picker').style.display = 'block';
+}
+
+function closePicker() {
+  document.getElementById('type-picker').style.display = 'none';
+  document.getElementById('calendar').style.display = 'block';
+  pickerDay = null;
+}
+
+function selectType(type) {
+  setDayMeta(pickerDay, type);
+
+  // If day already has a saved workout, update its type too
+  // (otherwise getDayWorkout will keep returning the old type)
+  const key = getDayKey(pickerDay);
+  if (allData[key] && allData[key].exercises) {
+    if (type === 'Rest') {
+      // Clear the workout data for rest days
+      delete allData[key];
+    } else {
+      // Update the type; reset exercises to new template (weights cleared)
+      allData[key] = { type, exercises: getTemplate(type).map(e => ({...e, weight:''})) };
+    }
+    save();
+  }
+
+  document.getElementById('type-picker').style.display = 'none';
+
+  if (type === 'Rest') {
+    // just go back to calendar
+    document.getElementById('calendar').style.display = 'block';
+    renderCalendar();
+    pickerDay = null;
+  } else {
+    // open workout view
+    const day = pickerDay;
+    pickerDay = null;
+    openDay(day);
+  }
+}
+
+// ── WORKOUT VIEW ──
+function openDay(day) {
+  selectedDay = day;
+  const workout = getDayWorkout(day);
+  if (!workout) return;
+  const color = getColor(workout.type);
+  const date  = new Date(curYear, curMonth, day);
+
+  document.getElementById('wv-title').textContent = workout.type + ' Day';
+  document.getElementById('wv-title').style.color = color;
+  document.getElementById('wv-date').textContent =
+    date.toLocaleDateString('en-US',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
+
+  document.getElementById('calendar').style.display = 'none';
+  document.getElementById('workout-view').style.display = 'block';
+  window.scrollTo(0,0);
+  renderExercises();
+}
+
+function closeDay() {
+  selectedDay = null;
+  document.getElementById('workout-view').style.display = 'none';
+  document.getElementById('calendar').style.display = 'block';
+  renderCalendar();
+}
+
+function renderExercises() {
+  const workout = getDayWorkout(selectedDay);
+  if (!workout) return;
+  const color = getColor(workout.type);
+  const list  = document.getElementById('exercises-list');
+  list.innerHTML = '';
+
+  workout.exercises.forEach((ex, i) => {
+    const row = document.createElement('div');
+    row.className = 'ex-row';
+
+    const nameInput = document.createElement('input');
+    nameInput.className = 'input-name';
+    nameInput.value = ex.name; nameInput.placeholder = 'Exercise...';
+    nameInput.addEventListener('input', e => updateCell(i,'name',e.target.value));
+
+    const setsInput = document.createElement('input');
+    setsInput.className = 'input-num';
+    setsInput.type='number'; setsInput.inputMode='numeric';
+    setsInput.value=ex.sets; setsInput.placeholder='-';
+    setsInput.addEventListener('focus', ()=>setsInput.style.borderColor=color);
+    setsInput.addEventListener('blur',  ()=>setsInput.style.borderColor='#1e1e28');
+    setsInput.addEventListener('input', e=>updateCell(i,'sets',e.target.value));
+
+    const repsInput = document.createElement('input');
+    repsInput.className = 'input-num';
+    repsInput.type='number'; repsInput.inputMode='numeric';
+    repsInput.value=ex.reps; repsInput.placeholder='-';
+    repsInput.addEventListener('focus', ()=>repsInput.style.borderColor=color);
+    repsInput.addEventListener('blur',  ()=>repsInput.style.borderColor='#1e1e28');
+    repsInput.addEventListener('input', e=>updateCell(i,'reps',e.target.value));
+
+    const weightInput = document.createElement('input');
+    weightInput.className = 'input-weight';
+    weightInput.inputMode='decimal';
+    weightInput.value=ex.weight; weightInput.placeholder='kg';
+    weightInput.style.color=color;
+    weightInput.addEventListener('focus', ()=>weightInput.style.borderColor=color);
+    weightInput.addEventListener('blur',  ()=>weightInput.style.borderColor='#1e1e28');
+    weightInput.addEventListener('input', e=>updateCell(i,'weight',e.target.value));
+
+    const delBtn = document.createElement('button');
+    delBtn.className='del-btn icon-btn'; delBtn.textContent='x';
+    delBtn.addEventListener('click', ()=>removeExercise(i));
+
+    row.appendChild(nameInput); row.appendChild(setsInput);
+    row.appendChild(repsInput); row.appendChild(weightInput);
+    row.appendChild(delBtn);
+    list.appendChild(row);
+  });
+  updateSummary();
+}
+
+function updateCell(exIdx, field, value) {
+  const key = getDayKey(selectedDay);
+  const workout = getDayWorkout(selectedDay);
+  workout.exercises[exIdx][field] = value;
+  allData[key] = workout;
+  save(); updateSummary();
+}
+
+function addExercise() {
+  const key = getDayKey(selectedDay);
+  const workout = getDayWorkout(selectedDay);
+  workout.exercises.push({name:'',sets:'',reps:'',weight:''});
+  allData[key] = workout; save(); renderExercises();
+}
+
+function removeExercise(exIdx) {
+  const key = getDayKey(selectedDay);
+  const workout = getDayWorkout(selectedDay);
+  workout.exercises.splice(exIdx,1);
+  allData[key] = workout; save(); renderExercises();
+}
+
+function resetDay() {
+  const key  = getDayKey(selectedDay);
+  // Use meta type (the currently assigned type) not the stored workout type
+  const type = getDayMeta(selectedDay) || getDayWorkout(selectedDay)?.type;
+  if (!type || type === 'Rest') return;
+  allData[key] = { type, exercises: getTemplate(type).map(e=>({...e,weight:''})) };
+  save(); renderExercises();
+}
+
+function updateSummary() {
+  const workout = getDayWorkout(selectedDay);
+  if (!workout) return;
+  const color   = getColor(workout.type);
+  const logged  = workout.exercises.filter(e=>e.weight!=='').length;
+  const vol     = workout.exercises
+    .filter(e=>e.weight&&e.sets&&e.reps)
+    .reduce((s,e)=>s+(parseFloat(e.weight)*parseInt(e.sets)*parseInt(e.reps)||0),0);
+  const summary = document.getElementById('summary');
+  if (logged>0) {
+    summary.style.display='block';
+    document.getElementById('sum-logged').textContent=logged;
+    const volEl=document.getElementById('sum-vol');
+    volEl.style.color=color;
+    volEl.innerHTML=vol.toFixed(0)+'<span style="font-size:12px;margin-left:3px">kg</span>';
+  } else { summary.style.display='none'; }
+}
+
+// ── TEMPLATE EDIT ──
+function openTemplate() {
+  const workout = getDayWorkout(selectedDay);
+  if (!workout) return;
+  editingType = workout.type;
+  document.getElementById('tv-title').textContent = editingType;
+  document.getElementById('tv-title').style.color = getColor(editingType);
+  document.getElementById('workout-view').style.display='none';
+  document.getElementById('template-view').style.display='block';
+  window.scrollTo(0,0);
+  renderTemplateList();
+}
+
+function closeTemplate() {
+  document.getElementById('template-view').style.display='none';
+  document.getElementById('workout-view').style.display='block';
+  editingType=null;
+}
+
+function renderTemplateList() {
+  const tmpl = getTemplate(editingType);
+  const color = getColor(editingType);
+  const list  = document.getElementById('template-list');
+  list.innerHTML='';
+
+  tmpl.forEach((ex,i)=>{
+    const row=document.createElement('div');
+    row.className='tmpl-row';
+
+    const nameInput=document.createElement('input');
+    nameInput.className='input-name'; nameInput.value=ex.name; nameInput.placeholder='Exercise...';
+    nameInput.addEventListener('input',e=>updateTemplate(i,'name',e.target.value));
+
+    const setsInput=document.createElement('input');
+    setsInput.className='input-num'; setsInput.type='number'; setsInput.inputMode='numeric';
+    setsInput.value=ex.sets; setsInput.placeholder='-';
+    setsInput.addEventListener('focus',()=>setsInput.style.borderColor=color);
+    setsInput.addEventListener('blur', ()=>setsInput.style.borderColor='#1e1e28');
+    setsInput.addEventListener('input',e=>updateTemplate(i,'sets',e.target.value));
+
+    const repsInput=document.createElement('input');
+    repsInput.className='input-num'; repsInput.type='number'; repsInput.inputMode='numeric';
+    repsInput.value=ex.reps; repsInput.placeholder='-';
+    repsInput.addEventListener('focus',()=>repsInput.style.borderColor=color);
+    repsInput.addEventListener('blur', ()=>repsInput.style.borderColor='#1e1e28');
+    repsInput.addEventListener('input',e=>updateTemplate(i,'reps',e.target.value));
+
+    const delBtn=document.createElement('button');
+    delBtn.className='del-btn icon-btn'; delBtn.textContent='x';
+    delBtn.addEventListener('click',()=>removeTemplateExercise(i));
+
+    row.appendChild(nameInput); row.appendChild(setsInput);
+    row.appendChild(repsInput); row.appendChild(delBtn);
+    list.appendChild(row);
+  });
+}
+
+function updateTemplate(idx, field, value) {
+  if (!savedTemplates[editingType]) savedTemplates[editingType]=getTemplate(editingType).map(e=>({...e}));
+  savedTemplates[editingType][idx][field]=value;
+  saveTmpls();
+}
+
+function addTemplateExercise() {
+  if (!savedTemplates[editingType]) savedTemplates[editingType]=getTemplate(editingType).map(e=>({...e}));
+  savedTemplates[editingType].push({name:'',sets:'',reps:''});
+  saveTmpls(); renderTemplateList();
+}
+
+function removeTemplateExercise(idx) {
+  if (!savedTemplates[editingType]) savedTemplates[editingType]=getTemplate(editingType).map(e=>({...e}));
+  savedTemplates[editingType].splice(idx,1);
+  saveTmpls(); renderTemplateList();
+}
+
+// Init
+renderCalendar();
+</script>
+
+<footer style="
+  text-align:center;
+  padding:25px 15px;
+  color:#444;
+  font-size:11px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+">
+  Designed by <span style="color:#ff6b35;">Mohamed Habeb</span>
+</footer>
+
+
+<div id="install-banner" style="
+  display:none; position:fixed; bottom:0; left:0; right:0;
+  background:#13131a; border-top:1px solid #2a2a35;
+  padding:14px 20px; z-index:999;
+  align-items:center; gap:12px; max-width:480px; margin:0 auto;
+  font-family:'DM Mono',monospace;
+">
+  <div style="font-size:22px">💪</div>
+  <div style="flex:1">
+    <div style="font-size:11px;letter-spacing:2px;color:#e8e6e0;">ADD TO HOME SCREEN</div>
+    <div style="font-size:9px;letter-spacing:1px;color:#555;margin-top:2px;">شغّله زي app حقيقي</div>
+  </div>
+  <button id="install-btn" style="
+    background:#ff6b35; border:none; color:#0a0a0f;
+    font-family:'DM Mono',monospace; font-size:10px;
+    letter-spacing:2px; padding:8px 14px; border-radius:8px; cursor:pointer;
+  ">INSTALL</button>
+  <button id="install-dismiss" style="
+    background:none; border:none; color:#444;
+    font-size:18px; cursor:pointer; padding:0 4px; line-height:1;
+  ">×</button>
+</div>
+
+<script>
+const SW_CODE = `
+const CACHE = 'workout-log-v1';
+const ASSETS = [self.location.href];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys =>
+    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+  ));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match(e.request)))
+  );
+});
+`;
+if ('serviceWorker' in navigator) {
+  const blob = new Blob([SW_CODE], { type: 'application/javascript' });
+  const swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl).catch(() => {});
+}
+
+let deferredPrompt = null;
+const installBanner  = document.getElementById('install-banner');
+const installBtn     = document.getElementById('install-btn');
+const installDismiss = document.getElementById('install-dismiss');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!localStorage.getItem('pwa_dismissed')) {
+    installBanner.style.display = 'flex';
+  }
+});
+installBtn && installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  installBanner.style.display = 'none';
+  if (outcome === 'accepted') localStorage.setItem('pwa_dismissed', '1');
+});
+installDismiss && installDismiss.addEventListener('click', () => {
+  installBanner.style.display = 'none';
+  localStorage.setItem('pwa_dismissed', '1');
+});
+window.addEventListener('appinstalled', () => {
+  installBanner.style.display = 'none';
+});
+</script>
+
+</body>
+</html>
